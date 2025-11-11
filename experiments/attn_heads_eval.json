@@ -1,0 +1,26 @@
+{
+  "1": {
+    "dataset": "pamap2",
+    "fusion_type": "hybrid",
+    "test_accuracy": 0.9287534356117249,
+    "test_f1_macro": 0.8472586725360449,
+    "test_loss": 0.31780480195391475,
+    "ece": 0.04725663197667975
+  },
+  "4": {
+    "dataset": "pamap2",
+    "fusion_type": "hybrid",
+    "test_accuracy": 0.925650954246521,
+    "test_f1_macro": 0.8454416150746616,
+    "test_loss": 0.33988717467768076,
+    "ece": 0.05119988350987104
+  },
+  "8": {
+    "dataset": "pamap2",
+    "fusion_type": "hybrid",
+    "test_accuracy": 0.925650954246521,
+    "test_f1_macro": 0.8361217389620749,
+    "test_loss": 0.30167509472267273,
+    "ece": 0.04861569297941108
+  }
+}

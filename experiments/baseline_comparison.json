@@ -1,0 +1,28 @@
+{
+  "results": {
+    "single_modality_imu_hand": {
+      "dataset": "pamap2",
+      "fusion_type": "early",
+      "accuracy": 0.9283102750778198,
+      "f1_macro": 0.8377336204335604,
+      "loss": 0.42907502694812755,
+      "ece": 0.05723959391797348
+    },
+    "naive_concat": {
+      "dataset": "pamap2",
+      "fusion_type": "early",
+      "accuracy": 0.930747926235199,
+      "f1_macro": 0.8494852212421223,
+      "loss": 0.26990715862500075,
+      "ece": 0.04267797273612088
+    },
+    "hybrid_attention": {
+      "dataset": "pamap2",
+      "fusion_type": "hybrid",
+      "accuracy": 0.925650954246521,
+      "f1_macro": 0.8454416150746616,
+      "loss": 0.33988717467768076,
+      "ece": 0.05119988350987104
+    }
+  }
+}
