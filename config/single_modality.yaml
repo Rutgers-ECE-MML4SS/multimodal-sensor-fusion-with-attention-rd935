@@ -1,0 +1,13 @@
+# configs/imu_hand.yaml
+defaults:
+  - base
+
+dataset:
+  modalities: [imu_hand]
+
+model:
+  # for 1 modality, early/hybrid both work; early is simpler
+  fusion_type: early
+
+experiment:
+  name: a2_single_modality_${dataset.name}

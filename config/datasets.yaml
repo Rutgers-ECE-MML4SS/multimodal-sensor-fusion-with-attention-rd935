@@ -43,7 +43,7 @@ cooking:
 # PAMAP2 Physical Activity Monitoring
 pamap2:
   name: pamap2
-  data_dir: ./data/pamap2
+  data_dir: C:/Users/ritwi/pamap2_data
   modalities: [imu_hand, imu_chest, imu_ankle, heart_rate]
   num_classes: 18
   sampling_rates:

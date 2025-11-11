@@ -1,87 +1,98 @@
 # Base configuration for A2 Multimodal Sensor Fusion
-# This file defines all hyperparameters and paths for reproducible experiments.
-# Edit this file rather than hardcoding values in your Python scripts.
+# Improved CPU-friendly version
 
-# Dataset configuration
 dataset:
-  name: pamap2  # Options: pamap2 (recommended), mhad, cooking
-  data_dir: ./data  # Where to store/load dataset
-  modalities: [imu_hand, imu_chest, imu_ankle, heart_rate]  # For pamap2
-                                                              # For mhad: [video, imu]
-                                                              # For cooking: [video, audio]
+  name: pamap2
+  data_dir: "C:/Users/ritwi/pamap2_data"
+  modalities: [imu_hand, imu_chest, imu_ankle, heart_rate]
   train_split: 0.7
   val_split: 0.15
   test_split: 0.15
-  batch_size: 32  # Adjust for your RAM (16-64 typical for CPU)
-  num_workers: 4  # Parallel data loading (0-4 for CPU)
+  batch_size: 32
+  num_workers: 4
+  num_classes: 18
 
-# Model configuration
 model:
-  fusion_type: hybrid  # Options: early, late, hybrid, uncertainty
-  hidden_dim: 256
-  output_dim: 128  # Encoder output dimension
-  num_heads: 4  # For attention mechanisms
+  # default to early because it's cheaper and already working
+  fusion_type: hybrid            # Options: early, late, hybrid, uncertainty
+  hidden_dim: 256              
+  output_dim: 128               
+  num_heads: 4                  # ignored for early/late, useful if you switch to hybrid
   dropout: 0.1
-  
-  # Encoder configurations per modality
+
+  # ----- encoder configs -----
+  # make PAMAP2 IMUs CNN-based so they produce fixed 256-d features cheaply
   encoders:
+    # generic entries (kept for completeness)
     video:
-      type: frame  # frame, sequence, or mlp
-      input_dim: 512  # ResNet features
+      type: frame
+      input_dim: 512
       temporal_pooling: attention
     imu:
-      type: sequence  # frame, sequence, or mlp
-      input_dim: 64  # 6-axis IMU (3 accel + 3 gyro) * statistical features
-      encoder_type: lstm  # For SequenceEncoder: lstm, gru, cnn
+      type: sequence
+      input_dim: 64
+      encoder_type: lstm
       num_layers: 2
 
-# Training configuration
+    # PAMAP2-specific
+    imu_hand:
+      input_dim: 17
+      type: sequence
+      encoder_type: lstm
+    imu_chest:
+      input_dim: 17
+      type: sequence
+      encoder_type: lstm
+    imu_ankle:
+      input_dim: 17
+      type: sequence
+      encoder_type: lstm
+    heart_rate:
+      input_dim: 1
+      type: sequence
+      encoder_type: lstm
+
 training:
-  max_epochs: 100
-  learning_rate: 1e-3
+  max_epochs: 50
+  learning_rate: 1e-3 
   weight_decay: 1e-4
   optimizer: adamw
   scheduler: cosine
-  warmup_epochs: 5
+  warmup_epochs: 4
   gradient_clip_norm: 1.0
-  early_stopping_patience: 10
-  
-  # Data augmentation
-  augmentation:
-    temporal_jitter: 0.1  # ±10% sequence length
-    gaussian_noise: 0.05  # σ=0.05
-    modality_dropout: 0.1  # 10% probability during training
+  early_stopping_patience: 5  # not huge, but gives bigger model time to improve
 
-# Evaluation configuration
+  limit_train_batches: 1.0
+  limit_val_batches: 1.0
+
+  augmentation:
+    temporal_jitter: 0.1
+    gaussian_noise: 0.05
+    modality_dropout: 0.1    
+
 evaluation:
   metrics: [accuracy, f1_macro, ece, nll]
   missing_modality_test: true
   uncertainty_analysis: true
   num_calibration_bins: 15
 
-# Uncertainty configuration
 uncertainty:
-  method: dropout  # Options: dropout, ensemble, learned
-  num_mc_samples: 10  # For MC dropout
-  temperature_scaling: true  # Post-hoc calibration
+  method: dropout
+  num_mc_samples: 10
+  temperature_scaling: true
 
-# Experiment tracking
 experiment:
   name: a2_${model.fusion_type}_${dataset.name}
-  save_dir: ./runs  # Model checkpoints saved here
+  save_dir: ./runs
   log_every_n_steps: 50
-  save_top_k: 3  # Keep top 3 checkpoints
+  save_top_k: 3
 
-# Output paths for grading (DO NOT CHANGE)
 outputs:
-  experiments_dir: ./experiments  # JSON results go here
-  analysis_dir: ./analysis        # Plots go here
-  report_path: ./report.pdf       # Final report location
+  experiments_dir: ./experiments
+  analysis_dir: ./analysis
+  report_path: ./report.pdf
 
-# Reproducibility (DO NOT CHANGE for grading)
-seed: 42  # Fixed seed ensures reproducible results
+seed: 42
 
-# Compute
-device: cpu  # Will auto-detect GPU if available, but CPU is required baseline
-mixed_precision: false  # Set true if using GPU with FP16 support
-
+device: cuda
+mixed_precision: true
