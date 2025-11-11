@@ -1,0 +1,109 @@
+{
+  "best_model_path": "runs\\a2_hybrid_pamap2\\checkpoints\\epoch=5-val/loss=0.2102.ckpt",
+  "best_val_loss": 0.21019794046878815,
+  "config": {
+    "dataset": {
+      "name": "pamap2",
+      "data_dir": "C:/Users/ritwi/pamap2_data",
+      "modalities": [
+        "imu_hand",
+        "imu_chest",
+        "imu_ankle",
+        "heart_rate"
+      ],
+      "train_split": 0.7,
+      "val_split": 0.15,
+      "test_split": 0.15,
+      "batch_size": 32,
+      "num_workers": 4,
+      "num_classes": 18
+    },
+    "model": {
+      "fusion_type": "hybrid",
+      "hidden_dim": 256,
+      "output_dim": 128,
+      "num_heads": 4,
+      "dropout": 0.1,
+      "encoders": {
+        "video": {
+          "type": "frame",
+          "input_dim": 512,
+          "temporal_pooling": "attention"
+        },
+        "imu": {
+          "type": "sequence",
+          "input_dim": 64,
+          "encoder_type": "lstm",
+          "num_layers": 2
+        },
+        "imu_hand": {
+          "input_dim": 17,
+          "type": "sequence",
+          "encoder_type": "lstm"
+        },
+        "imu_chest": {
+          "input_dim": 17,
+          "type": "sequence",
+          "encoder_type": "lstm"
+        },
+        "imu_ankle": {
+          "input_dim": 17,
+          "type": "sequence",
+          "encoder_type": "lstm"
+        },
+        "heart_rate": {
+          "input_dim": 1,
+          "type": "sequence",
+          "encoder_type": "lstm"
+        }
+      }
+    },
+    "training": {
+      "max_epochs": 50,
+      "learning_rate": 0.001,
+      "weight_decay": 0.0001,
+      "optimizer": "adamw",
+      "scheduler": "cosine",
+      "warmup_epochs": 4,
+      "gradient_clip_norm": 1.0,
+      "early_stopping_patience": 5,
+      "limit_train_batches": 1.0,
+      "limit_val_batches": 1.0,
+      "augmentation": {
+        "temporal_jitter": 0.1,
+        "gaussian_noise": 0.05,
+        "modality_dropout": 0.1
+      }
+    },
+    "evaluation": {
+      "metrics": [
+        "accuracy",
+        "f1_macro",
+        "ece",
+        "nll"
+      ],
+      "missing_modality_test": true,
+      "uncertainty_analysis": true,
+      "num_calibration_bins": 15
+    },
+    "uncertainty": {
+      "method": "dropout",
+      "num_mc_samples": 10,
+      "temperature_scaling": true
+    },
+    "experiment": {
+      "name": "a2_hybrid_pamap2",
+      "save_dir": "./runs",
+      "log_every_n_steps": 50,
+      "save_top_k": 3
+    },
+    "outputs": {
+      "experiments_dir": "./experiments",
+      "analysis_dir": "./analysis",
+      "report_path": "./report.pdf"
+    },
+    "seed": 42,
+    "device": "cuda",
+    "mixed_precision": true
+  }
+}
