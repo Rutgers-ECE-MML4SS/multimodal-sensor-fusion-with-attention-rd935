@@ -1,270 +1,216 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/n_Dh2nMC)
-# A2: Multimodal Sensor Fusion with Attention
-
-**ECE 532 - Fall 2025**  
-**Release: October 25, 2025 • Due: November 10, 2025 23:59 ET**
-
-This repository contains the starter code for Assignment 2, focusing on attention-based multimodal sensor fusion for heterogeneous sensor streams.
-
-## 🚀 Quick Start
-
-### Local Environment Setup
-
-1. **Clone repository and set up environment:**
-   ```bash
-   cd a2-<your-netid>
-   conda env create -f environment.yml -n a2
-   conda activate a2
-   ```
-
-2. **Run quick tests:**
-   ```bash
-   pytest -q
-   ```
-
-## 📁 Repository Structure
-
-```
-a2/
-├── src/
-│   ├── fusion.py           # TODO: Implement fusion architectures
-│   ├── attention.py        # TODO: Implement attention mechanisms
-│   ├── encoders.py         # TODO: Implement encoders
-│   ├── uncertainty.py      # TODO: Implement uncertainty quantification
-│   ├── train.py            # Training pipeline (mostly complete)
-│   ├── eval.py             # Evaluation script (mostly complete)
-│   ├── analysis.py         # Generate plots (mostly complete)
-│   └── data.py             # Dataset loading (complete)
-├── config/
-│   ├── base.yaml           # Base configuration
-│   ├── fusion_strategies.yaml  # Fusion strategy configs
-│   └── datasets.yaml       # Dataset-specific configs
-├── experiments/            # Your experiment results (JSON)
-├── analysis/              # Your generated plots (PNG)
-├── runs/                  # Model checkpoints
-├── tests/                 # Unit tests for your implementations
-├── report.pdf            # Your report (≤4 pages)
-└── README.md
-```
-
-## 🎯 Assignment Requirements
-
-### Core Implementations (Required)
-
-You need to implement the following modules:
-
-**1. Fusion Architectures (`src/fusion.py`)** - 35 points
-- `EarlyFusion`: Concatenate features before processing
-- `LateFusion`: Independent processing, combine predictions
-- `HybridFusion`: Cross-modal attention + learned weighting (main focus!)
-
-**2. Attention Mechanisms (`src/attention.py`)** - 15 points
-- `CrossModalAttention`: Attention between different modalities
-- Visualize attention weights
-
-**3. Encoders (`src/encoders.py`)** - See note below
-- `SequenceEncoder`: For time-series data (IMU, audio)
-- `FrameEncoder`: For frame-based data (video)
-- `SimpleMLPEncoder`: For pre-extracted features
-
-**Note:** Pick ONE encoder type per modality that matches your dataset. You don't need to implement all encoder variants.
-
-**4. Uncertainty Quantification (`src/uncertainty.py`)** - 20 points
-- Expected Calibration Error (ECE)
-- Reliability diagrams
-- Target ECE ≈ 0.1
-
-**5. Missing Modality Handling** - 25 points
-- Test with all possible modality subsets
-- Graceful performance degradation
-
-**6. Report & Analysis** - 5 points
-- ≤4 pages technical report
-- All required plots and tables
-
-See `A2.pdf` for full details and rubric.
-
-## 📊 Datasets
-
-You must use one of the following real datasets:
-
-**PAMAP2 (Recommended):**
-- Download: https://archive.ics.uci.edu/ml/datasets/pamap2+physical+activity+monitoring
-- Smallest dataset (~500MB)
-- CPU-friendly (no video processing)
-- 3 IMU sensors + heart rate
-- See A2.pdf for preprocessing instructions
-
-**MHAD:**
-- Download: http://tele-immersion.citris-uc.org/berkeley_mhad
-- Video + IMU data
-- Multiple sampling rates
-- See A2.pdf for preprocessing instructions
-
-**MPI Cooking:**
-- Download: https://www.mpi-inf.mpg.de/departments/computer-vision-and-machine-learning/research/human-activity-recognition/mpii-cooking-2-dataset
-- Audio-visual cooking actions
-- See A2.pdf for preprocessing instructions
-
-## 💻 Development Workflow
-
-### Step 1: Implement Core Modules (Week 1)
-
-Start with the simplest versions:
-
-1. **Implement `EarlyFusion` first**:
-   ```bash
-   # Edit src/fusion.py
-   # Test with:
-   python -m pytest tests/test_fusion.py::TestFusionInterfaces::test_early_fusion_shape -v
-   ```
-
-2. **Implement `SimpleMLPEncoder`** (easiest encoder):
-   ```bash
-   # Edit src/encoders.py
-   # Test with:
-   python -m pytest tests/test_encoders.py::TestSimpleMLPEncoder -v
-   ```
-
-3. **Download and prepare your dataset** (see Datasets section above)
-
-### Step 2: Add Attention and Hybrid Fusion (Week 2)
-
-1. **Implement `CrossModalAttention`**:
-   ```bash
-   # Edit src/attention.py
-   # Test with:
-   python -m pytest tests/test_attention.py::TestCrossModalAttention -v
-   ```
-
-2. **Implement `HybridFusion`** using your attention module
-
-3. **Compare fusion strategies**:
-   ```bash
-   # Train all three fusion types
-   for fusion in early late hybrid; do
-       python src/train.py model.fusion_type=$fusion
-   done
-   ```
-
-### Step 3: Experiments and Analysis (Week 3)
-
-1. **Run missing modality tests**:
-   ```bash
-   python src/eval.py --checkpoint runs/best.ckpt --missing_modality_test
-   ```
-
-2. **Generate plots**:
-   ```bash
-   python src/analysis.py --experiment_dir experiments/ --output_dir analysis/
-   ```
-
-3. **Write report** with your results and analysis
-
-## 🧪 Testing Your Implementation
-
-```bash
-# Run all tests
-pytest -v
-
-# Run specific test file
-pytest tests/test_fusion.py -v
-
-# Run specific test
-pytest tests/test_fusion.py::TestFusionInterfaces::test_early_fusion_shape -v
-```
-
-Tests check:
-- Correct input/output shapes
-- Gradient flow
-- Missing modality handling
-- No NaN values in outputs
-
-## 📝 Required Outputs
-
-For grading, ensure these files exist:
-
-### Experiment Results (JSON)
-- `experiments/fusion_comparison.json`
-- `experiments/missing_modality.json`
-- `experiments/uncertainty.json`
-
-### Analysis Plots (PNG)
-- `analysis/fusion_comparison.png`
-- `analysis/missing_modality.png`
-- `analysis/attention_viz.png`
-- `analysis/calibration.png`
-
-### Report
-- `report.pdf` (≤4 pages in root directory)
-
-## 🎓 Expected Performance
-
-### On PAMAP2 (recommended dataset)
-- Single modality: ~65-70%
-- Early fusion: ~75-80%
-- Hybrid fusion: ~80-85%
-
-Your results may vary based on hyperparameters and random seed.
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-**Import errors:**
-```bash
-# Make sure you're in the right directory and environment
-conda activate a2
-cd a2-<netid>
-```
-
-**Out of memory:**
-```bash
-# Reduce batch size in config/base.yaml
-dataset:
-  batch_size: 16  # or even 8
-```
-
-**Tests fail with NotImplementedError:**
-- This is expected! Implement the functions marked with TODO
-- Tests will pass as you implement each module
-
-## 🆘 Getting Help
-
-- **Piazza:** Tag questions with `#a2`
-- **Office Hours:** Tuesday & Friday 2-3 PM (SEC-210)
-- **Assignment PDF:** See `A2.pdf` for full requirements
-
-## 🏁 Submission
-
-1. **Complete all implementations** and verify tests pass
-
-2. **Generate all required outputs:**
-   ```bash
-   # Train models
-   # Run evaluations
-   # Generate plots
-   ```
-
-3. **Write report** (≤4 pages)
-
-4. **Tag your submission:**
-   ```bash
-   git add .
-   git commit -m "Final submission for A2"
-   git tag submission
-   git push origin main --tags
-   ```
-
-5. **Submit on Canvas:**
-   - Upload `report.pdf`
-   - Submit repository link
-
-**Deadline:** November 10, 2025, 23:59 ET
-
-Late submissions: -10% per day (72h max)
+# A2: Multimodal Sensor Fusion with Attention  
+**ECE 532 – Fall 2025**  
+**Author:** Ritwika Das (rd935)  
+**Dataset:** PAMAP2 Physical Activity Monitoring  
+
+This repository implements and evaluates three fusion strategies — **Early**, **Late**, and **Hybrid (Attention-Based)** — for multimodal human activity recognition using the PAMAP2 dataset. It includes training, evaluation, uncertainty quantification, and analysis scripts to reproduce all results and plots shown in the final report.
 
 ---
 
-**Good luck! Focus on understanding fusion concepts and building robust systems. 🎯**
+## Setup Instructions
 
+Clone the repository and create the Conda environment:
+```bash
+git clone <repo-url> repo-name
+cd repo-name
+conda env create -f environment.yml -n a2
+conda activate a2
+```
+
+Download the **PAMAP2 Physical Activity Monitoring** dataset from the [UCI repository](https://archive.ics.uci.edu/ml/datasets/pamap2+physical+activity+monitoring) and update the path in `config/base.yaml`:
+```yaml
+dataset:
+  name: pamap2
+  data_dir: "C:/Users/<username>/pamap2_data"
+```
+
+Verify installation:
+```bash
+pytest -q
+```
+**Expected output:** `Setup complete, environment activated`
+
+---
+
+## Training
+
+All three fusion strategies (early, late, hybrid) can be trained using a single command loop:
+```bash
+for fusion in early late hybrid; do
+    python src/train.py model.fusion_type=$fusion
+done
+```
+
+There is folder called script which includes a lot of the files which I used for training/creating the plots. There
+is a file called run_all.ps1 (made for powershell) that includes the lines to train all 3 fusion, in addition other versions
+of the fusions which we needed for the assignment (single modality, hybrid - num_heads = 1, 4, 8)
+
+Each run uses `config/base.yaml` and saves checkpoints under:
+```
+runs/a2_<fusion>_pamap2/checkpoints/last.ckpt
+```
+
+**Expected runtime:** approximately 30–40 minutes on GPU (longer on CPU).  
+**Expected output:** validation loss and accuracy printed to the console, and a saved model checkpoint.
+
+To retrain a specific model (e.g., Hybrid):
+```bash
+python src/train.py model.fusion_type=hybrid
+```
+
+---
+
+## Evaluation and Analysis
+
+After training, run evaluation to generate results:
+```bash
+python src/eval.py --checkpoint runs/a2_early_pamap2/checkpoints/last.ckpt --output_dir experiments/early --device cuda
+python src/eval.py --checkpoint runs/a2_late_pamap2/checkpoints/last.ckpt --output_dir experiments/late --device cuda
+python src/eval.py --checkpoint runs/a2_hybrid_pamap2/checkpoints/last.ckpt --output_dir experiments/hybrid --device cuda
+```
+
+To create fusion_comparison.json
+```bash
+python scripts/make_fusion_comparison.py
+```
+
+To create the baselines_comparison.json
+```bash
+python scripts/run_baselines.py
+```
+
+Then generate analysis figures:
+
+For fusion_comparison.png and missing_modality.png
+```bash
+python src/analysis.py --experiment_dir experiments/ --output_dir analysis/
+```
+
+For attention_viz.png
+```bash
+python scripts/make_attention_heatmap.py 
+```
+
+For calibration.png
+```bash
+python scripts/make_callibration.py
+```
+
+For attention_heads_acc.png
+```bash
+python scripts/run_attention_ablation.py
+```
+
+**Expected outputs:**
+- JSONs in `experiments/`:  
+  `evaluation_results.json` for early, late, and hybrid models  
+- Plots in `analysis/`:  
+  `fusion_comparison.png`, `missing_modality.png`, `attention_viz.png`, `calibration.png`
+
+---
+
+## Uncertainty Analysis
+
+Calibration and uncertainty metrics (ECE, NLL, reliability diagram) can be computed via:
+```bash
+python src/uncertainty.py --preds experiments/hybrid/evaluation_results.json --output experiments/uncertainty.json
+```
+
+If uncertainty is integrated into evaluation:
+```bash
+python src/eval.py --checkpoint runs/a2_hybrid_pamap2/checkpoints/last.ckpt --output_dir experiments/hybrid --compute_uncertainty
+```
+
+**Expected output:** `experiments/uncertainty.json` with fields:
+```json
+{
+  "dataset": "pamap2",
+  "ece": 0.05,
+  "nll": 0.31,
+  "accuracy_per_bin": [...],
+  "bins": [...]
+}
+```
+
+---
+
+## Results Summary
+
+| Fusion Strategy | Accuracy | F1 (macro) | ECE  |
+|-----------------|-----------|------------|------|
+| Early Fusion    | 0.931     | 0.849      | 0.043 |
+| Late Fusion     | **0.932** | **0.850**  | **0.043** |
+| Hybrid Fusion   | 0.926     | 0.845      | 0.051 |
+
+**Dataset used:** PAMAP2 (3 IMUs + heart rate).  
+**Best model:** Late Fusion — achieved the highest accuracy and best calibration.  
+**Training time:** ~30–40 minutes on local hardware.  
+**Key finding:** All three fusion methods performed similarly (within 1%), with Late Fusion slightly best. Hybrid Fusion learned meaningful modality dependencies but showed limited accuracy gains due to preprocessing that made sensor features highly correlated. Late Fusion offers the best trade-off between simplicity, robustness, and calibration.
+
+---
+
+## File Manifest
+
+**Code**
+```
+src/fusion.py          # Early, Late, Hybrid fusion modules
+src/attention.py       # Cross-modal attention mechanism
+src/encoders.py        # Modality-specific encoders
+src/uncertainty.py     # Calibration and ECE analysis
+src/train.py           # Training pipeline
+src/eval.py            # Evaluation and JSON generation
+src/analysis.py        # Plot generation
+```
+
+**Configs**
+```
+config/base.yaml
+config/fusion_strategies.yaml
+config/datasets.yaml
+```
+
+**Outputs**
+```
+experiments/early/evaluation_results.json
+experiments/late/evaluation_results.json
+experiments/hybrid/evaluation_results.json
+experiments/uncertainty.json
+analysis/fusion_comparison.png
+analysis/missing_modality.png
+analysis/attention_viz.png
+analysis/calibration.png
+report.pdf
+```
+
+**Checkpoints**
+```
+runs/a2_early_pamap2/checkpoints/last.ckpt
+runs/a2_late_pamap2/checkpoints/last.ckpt
+runs/a2_hybrid_pamap2/checkpoints/last.ckpt
+```
+
+---
+
+## Summary
+
+- **Dataset:** PAMAP2 Physical Activity Monitoring  
+- **Best model:** Late Fusion (Acc = 0.932, F1 = 0.85, ECE = 0.043)  
+- **Graceful degradation:** Confirmed under missing-sensor tests  
+- **Calibration:** ECE ≈ 0.05 for all fusion types  
+- **Insight:** Preprocessing homogenized sensor features, reducing the Hybrid model’s advantage  
+- **Recommended deployment model:** Late Fusion — simplest, most robust, and well-calibrated  
+
+---
+
+✅ **Expected final terminal output**
+```
+Training complete. Checkpoints saved in runs/
+Evaluation complete. Results in experiments/
+Plots saved in analysis/
+Setup complete, environment activated.
+```
+
+---
+
+**End of README**  
+*(ECE 532 – Multimodal Sensor Fusion with Attention, Fall 2025)*
