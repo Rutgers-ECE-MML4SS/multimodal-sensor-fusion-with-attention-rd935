@@ -37,44 +37,36 @@ def plot_fusion_comparison(
     accuracies = [results['results'][s]['accuracy'] for s in strategies]
     f1_scores = [results['results'][s]['f1_macro'] for s in strategies]
     eces = [results['results'][s]['ece'] for s in strategies]
-    inference_times = [results['results'][s]['inference_ms'] for s in strategies]
     
-    # Create figure with subplots
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    # Create figure with 1x3 subplots
+    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
     fig.suptitle('Fusion Strategy Comparison', fontsize=16, fontweight='bold')
-    
+
     # Accuracy comparison
-    axes[0, 0].bar(strategies, accuracies, color=['#1f77b4', '#ff7f0e', '#2ca02c'])
-    axes[0, 0].set_ylabel('Accuracy', fontsize=12)
-    axes[0, 0].set_title('Test Accuracy', fontsize=12)
-    axes[0, 0].set_ylim([0, 1.0])
+    axes[0].bar(strategies, accuracies, color=['#1f77b4', '#ff7f0e', '#2ca02c'][:len(strategies)])
+    axes[0].set_ylabel('Accuracy', fontsize=12)
+    axes[0].set_title('Test Accuracy', fontsize=12)
+    axes[0].set_ylim([0, 1.0])
     for i, v in enumerate(accuracies):
-        axes[0, 0].text(i, v + 0.02, f'{v:.3f}', ha='center', fontsize=10)
-    
+        axes[0].text(i, v + 0.02, f'{v:.3f}', ha='center', fontsize=10)
+
     # F1 score comparison
-    axes[0, 1].bar(strategies, f1_scores, color=['#1f77b4', '#ff7f0e', '#2ca02c'])
-    axes[0, 1].set_ylabel('F1 Score (macro)', fontsize=12)
-    axes[0, 1].set_title('F1 Score', fontsize=12)
-    axes[0, 1].set_ylim([0, 1.0])
+    axes[1].bar(strategies, f1_scores, color=['#1f77b4', '#ff7f0e', '#2ca02c'][:len(strategies)])
+    axes[1].set_ylabel('F1 Score (macro)', fontsize=12)
+    axes[1].set_title('F1 Score', fontsize=12)
+    axes[1].set_ylim([0, 1.0])
     for i, v in enumerate(f1_scores):
-        axes[0, 1].text(i, v + 0.02, f'{v:.3f}', ha='center', fontsize=10)
-    
+        axes[1].text(i, v + 0.02, f'{v:.3f}', ha='center', fontsize=10)
+
     # ECE comparison
-    axes[1, 0].bar(strategies, eces, color=['#1f77b4', '#ff7f0e', '#2ca02c'])
-    axes[1, 0].set_ylabel('ECE', fontsize=12)
-    axes[1, 0].set_title('Expected Calibration Error', fontsize=12)
-    axes[1, 0].axhline(y=0.1, color='r', linestyle='--', label='Target (0.1)')
-    axes[1, 0].legend()
+    axes[2].bar(strategies, eces, color=['#1f77b4', '#ff7f0e', '#2ca02c'][:len(strategies)])
+    axes[2].set_ylabel('ECE', fontsize=12)
+    axes[2].set_title('Expected Calibration Error', fontsize=12)
+    axes[2].axhline(y=0.1, color='r', linestyle='--', label='Target (0.1)')
+    axes[2].legend()
     for i, v in enumerate(eces):
-        axes[1, 0].text(i, v + 0.005, f'{v:.3f}', ha='center', fontsize=10)
-    
-    # Inference time comparison
-    axes[1, 1].bar(strategies, inference_times, color=['#1f77b4', '#ff7f0e', '#2ca02c'])
-    axes[1, 1].set_ylabel('Inference Time (ms)', fontsize=12)
-    axes[1, 1].set_title('Inference Speed', fontsize=12)
-    for i, v in enumerate(inference_times):
-        axes[1, 1].text(i, v + 0.5, f'{v:.1f}', ha='center', fontsize=10)
-    
+        axes[2].text(i, v + 0.005, f'{v:.3f}', ha='center', fontsize=10)
+
     plt.tight_layout()
     
     # Save

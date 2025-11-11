@@ -111,26 +111,23 @@ class SequenceEncoder(nn.Module):
 
         if self.encoder_type in ['lstm', 'gru']:
             if lengths is not None:
-                # pack for variable length sequences
                 packed = nn.utils.rnn.pack_padded_sequence(
                     sequence, lengths.cpu(), batch_first=True, enforce_sorted=False
                 )
                 _, h = self.rnn(packed)
-                if isinstance(h, tuple):  # LSTM
+                if isinstance(h, tuple): 
                     h = h[0]
             else:
                 _, h = self.rnn(sequence)
                 if isinstance(h, tuple):
                     h = h[0]
-            # h shape: (num_layers, B, hidden_dim) -> take last layer
-            last = h[-1]  # (B, hidden_dim)
+            last = h[-1]  
             return self.projection(last)
 
-        else:  # cnn
-            # (B, T, C) -> (B, C, T)
+        else:  
             x = sequence.transpose(1, 2)
             x = self.conv(x)
-            x = self.pool(x).squeeze(-1)  # (B, hidden_dim)
+            x = self.pool(x).squeeze(-1)  
             return self.projection(x)        
         
 
@@ -206,20 +203,19 @@ class FrameEncoder(nn.Module):
         # 3. Project to output dimension
         
         B, T, D = frames.shape
-        x = self.proj(frames)  # (B, T, output_dim)
+        x = self.proj(frames) 
 
         if self.temporal_pooling == 'average':
             if mask is not None:
-                mask = mask.unsqueeze(-1)  # (B, T, 1)
+                mask = mask.unsqueeze(-1) 
                 x = (x * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-6)
             else:
                 x = x.mean(dim=1)
             return x
         elif self.temporal_pooling == 'max':
             if mask is not None:
-                # mask invalid frames to very small value before max
                 x = x.masked_fill(mask.unsqueeze(-1) == 0, -1e9)
-            x = x.max(dim=1).values  # (B, output_dim)
+            x = x.max(dim=1).values 
             return x
 
         elif self.temporal_pooling == 'attention':
@@ -250,11 +246,11 @@ class FrameEncoder(nn.Module):
         # 3. Softmax to get weights
         # 4. Weighted sum of frames
 
-        scores = self.attn(frames).squeeze(-1)  # (B, T)
+        scores = self.attn(frames).squeeze(-1) 
         if mask is not None:
             scores = scores.masked_fill(mask == 0, -1e9)
-        weights = torch.softmax(scores, dim=1)  # (B, T)
-        pooled = torch.bmm(weights.unsqueeze(1), frames).squeeze(1)  # (B, output_dim)
+        weights = torch.softmax(scores, dim=1)
+        pooled = torch.bmm(weights.unsqueeze(1), frames).squeeze(1) 
         return pooled, weights
 
 class SimpleMLPEncoder(nn.Module):

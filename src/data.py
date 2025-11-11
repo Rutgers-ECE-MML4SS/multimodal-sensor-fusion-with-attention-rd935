@@ -270,7 +270,7 @@ def create_dataloaders(
         shuffle=True,
         num_workers=num_workers,
         collate_fn=collate_multimodal,
-        pin_memory=True
+        pin_memory=True,
     )
     
     val_loader = data.DataLoader(
@@ -279,7 +279,7 @@ def create_dataloaders(
         shuffle=False,
         num_workers=num_workers,
         collate_fn=collate_multimodal,
-        pin_memory=True
+        pin_memory=True,
     )
     
     test_loader = data.DataLoader(
@@ -288,7 +288,7 @@ def create_dataloaders(
         shuffle=False,
         num_workers=num_workers,
         collate_fn=collate_multimodal,
-        pin_memory=True
+        pin_memory=True,
     )
     
     return train_loader, val_loader, test_loader

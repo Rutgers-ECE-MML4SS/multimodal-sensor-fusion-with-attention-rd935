@@ -46,6 +46,7 @@ def evaluate_model(
     all_preds = []
     all_labels = []
     all_confidences = []
+    all_logits = []
     total_loss = 0
     num_batches = 0
     
@@ -73,11 +74,13 @@ def evaluate_model(
             all_preds.append(preds.cpu())
             all_labels.append(labels.cpu())
             all_confidences.append(confidences.cpu())
+            all_logits.append(logits.cpu())
     
     # Concatenate all batches
     all_preds = torch.cat(all_preds)
     all_labels = torch.cat(all_labels)
     all_confidences = torch.cat(all_confidences)
+    all_logits = torch.cat(all_logits)  
     
     # Compute metrics
     accuracy = (all_preds == all_labels).float().mean().item()
@@ -100,7 +103,7 @@ def evaluate_model(
     }
     
     if return_predictions:
-        return metrics, (all_preds, all_labels, all_confidences)
+        return metrics, (all_preds, all_labels, all_confidences, all_logits)
     else:
         return metrics
 
@@ -283,6 +286,8 @@ def main():
                        help='Directory to save results')
     parser.add_argument('--missing_modality_test', action='store_true',
                        help='Run missing modality robustness test')
+    parser.add_argument('--uncertainty_test', action='store_true',
+                       help='Run uncertainty / calibration audit and save uncertainty.json')
     parser.add_argument('--device', type=str, default='cpu',
                        help='Device to run on')
     
@@ -312,7 +317,7 @@ def main():
     print("Standard Evaluation")
     print("="*80)
     
-    metrics, (preds, labels, confidences) = evaluate_model(
+    metrics, (preds, labels, confidences, logits) = evaluate_model(
         model, test_loader, args.device, return_predictions=True
     )
     
@@ -336,7 +341,7 @@ def main():
         'test_loss': metrics['loss'],
         'ece': ece
     }
-    
+
     # Missing modality test
     if args.missing_modality_test:
         print("\n" + "="*80)
@@ -363,6 +368,65 @@ def main():
         # Save missing modality results
         output_path = Path(args.output_dir) / 'missing_modality.json'
         save_results_json(missing_results, output_path)
+
+        # Uncertainty / calibration audit (Experiment 3)
+    if args.uncertainty_test:
+        print("\n" + "="*80)
+        print("Uncertainty / Calibration Audit")
+        print("="*80)
+
+        # core metrics
+        ece = CalibrationMetrics.expected_calibration_error(
+            confidences, preds, labels, num_bins=10
+        )
+        mce = CalibrationMetrics.maximum_calibration_error(
+            confidences, preds, labels, num_bins=10
+        )
+        nll = CalibrationMetrics.negative_log_likelihood(
+            logits, labels
+        )
+
+        # we also need per-bin accuracy + bins for the JSON
+        num_bins = 10
+        conf_np = confidences.numpy()
+        preds_np = preds.numpy()
+        labels_np = labels.numpy()
+
+        # bins from 0.0 to 1.0 in equal steps
+        bin_edges = np.linspace(0.0, 1.0, num_bins + 1)  # e.g. 0.0,0.1,...,1.0
+        accuracy_per_bin = []
+        # if you want to store the upper edge like your example (0.1,0.2,...,1.0)
+        bins_for_json = bin_edges[1:].tolist()
+
+        for b in range(num_bins):
+            low = bin_edges[b]
+            high = bin_edges[b + 1]
+
+            in_bin = (conf_np > low) & (conf_np <= high)
+            if not np.any(in_bin):
+                # no samples in this bin
+                accuracy_per_bin.append(None)  # or 0.0, but None is clearer
+                continue
+
+            bin_correct = (preds_np[in_bin] == labels_np[in_bin]).mean()
+            accuracy_per_bin.append(float(bin_correct))
+
+        uncertainty_results = {
+            "dataset": config.dataset.name,
+            "calibration_metrics": {
+                "ece": float(ece),
+                "nll": float(nll),
+                # you can add mce if you want, but the sample json didn't have it
+                "bins": bins_for_json,
+                "accuracy_per_bin": accuracy_per_bin
+            }
+        }
+
+        unc_path = Path(args.output_dir) / "uncertainty.json"
+        unc_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(unc_path, "w") as f:
+            json.dump(uncertainty_results, f, indent=2)
+        print(f"Saved calibration results to {unc_path}")
     
     # Save all results
     output_path = Path(args.output_dir) / 'evaluation_results.json'

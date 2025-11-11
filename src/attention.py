@@ -46,14 +46,13 @@ class CrossModalAttention(nn.Module):
         # TODO: Implement multi-head attention projections
         # Hint: Use nn.Linear for Q, K, V projections
         # Query from modality A, Key and Value from modality B
-        
         self.q_proj = nn.Linear(query_dim, hidden_dim)
         self.k_proj = nn.Linear(key_dim, hidden_dim)
         self.v_proj = nn.Linear(key_dim, hidden_dim)
         self.out_proj = nn.Linear(hidden_dim, hidden_dim)
         self.dropout = nn.Dropout(dropout)
         self.scale = self.head_dim ** 0.5
-    
+
     def forward(
         self,
         query: torch.Tensor,
@@ -85,24 +84,43 @@ class CrossModalAttention(nn.Module):
         #   5. Apply attention to values: attn_weights @ V
         #   6. Reshape and project back to hidden_dim
 
-        q = self.q_proj(query).view(batch_size, self.num_heads, 1, self.head_dim)
-        k = self.k_proj(key).view(batch_size, self.num_heads, 1, self.head_dim)
-        v = self.v_proj(value).view(batch_size, self.num_heads, 1, self.head_dim)
-
-        scores = (q * k).sum(-1, keepdim=True) / self.scale
-
+        # project
+        q = self.q_proj(query) 
+        k = self.k_proj(key)    
+        v = self.v_proj(value) 
+        
+        # reshape to (B, heads, 1, head_dim) because we have single-vector modalities
+        q = q.view(batch_size, self.num_heads, 1, self.head_dim)
+        k = k.view(batch_size, self.num_heads, 1, self.head_dim)
+        v = v.view(batch_size, self.num_heads, 1, self.head_dim)
+        
+        # scaled dot-product for single token
+        scores = (q * k).sum(dim=-1, keepdim=True) / self.scale 
+        
         if mask is not None:
-            # mask: (B,)
+            # mask: (B,) -> (B, 1, 1, 1)
             mask = mask.view(batch_size, 1, 1, 1)
-            scores = scores.masked_fill(mask == 0, -1e9)
+            scores = scores.masked_fill(mask == 0, float("-inf"))
 
-        attn = torch.softmax(scores, dim=-1)
+            all_masked = torch.isinf(scores).all(dim=-1, keepdim=True).all(dim=-2, keepdim=True)
+  
+            scores = torch.where(all_masked, torch.zeros_like(scores), scores)
+                
+        attn = torch.softmax(scores, dim=-1)  
         attn = self.dropout(attn)
-
-        context = attn * v  # (B, H, 1, D_head)
-        context = context.reshape(batch_size, -1)  # (B, hidden_dim)
-        out = self.out_proj(context)
-        return out, attn  # attn for viz
+        
+        # apply attention
+        out = (attn * v).sum(dim=-2)  
+        out = out.reshape(batch_size, -1)  
+        out = self.out_proj(out)  
+        
+        # small residual so we don't destroy the original signal
+        if query.size(-1) == out.size(-1):
+            out = 0.5 * query + 0.5 * out
+        
+        # TODO: Implement attention visualization
+        # we RETURN the attention weights so that fusion.py can log/plot them
+        return out, attn
 
 class TemporalAttention(nn.Module):
     """
@@ -169,22 +187,21 @@ class TemporalAttention(nn.Module):
 
         scale = (self.head_dim ** 0.5)
 
-        q = self.q_proj(sequence).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)  # (B, H, T, D)
+        q = self.q_proj(sequence).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)  
         k = self.k_proj(sequence).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
         v = self.v_proj(sequence).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
 
-        # (B, H, T, T)
         scores = torch.matmul(q, k.transpose(-2, -1)) / scale
 
         if mask is not None:
-            mask = mask.unsqueeze(1).unsqueeze(2)  # (B,1,1,T)
+            mask = mask.unsqueeze(1).unsqueeze(2)  
             scores = scores.masked_fill(mask == 0, -1e9)
 
         attn = torch.softmax(scores, dim=-1)
         attn = self.dropout(attn)
 
-        context = torch.matmul(attn, v)  # (B, H, T, D)
-        context = context.transpose(1, 2).contiguous().view(B, T, -1)  # (B, T, hidden_dim)
+        context = torch.matmul(attn, v) 
+        context = context.transpose(1, 2).contiguous().view(B, T, -1)  
         out = self.out_proj(context)
         return out, attn
     
@@ -208,13 +225,11 @@ class TemporalAttention(nn.Module):
         # Option 2: Learn pooling query vector
         # Option 3: Take output at special [CLS] token position
 
-        # attention_weights: (B, H, T, T) -> we want weights over time for each query timestep.
-        # simplest: average heads and take attention of the first timestep as global
-        attn_mean = attention_weights.mean(1)  # (B, T, T)
-        # take attention of CLS-like position (0), or average over queries
-        global_weights = attn_mean.mean(1)  # (B, T)
-        global_weights = torch.softmax(global_weights, dim=-1)  # (B, T)
-        pooled = torch.bmm(global_weights.unsqueeze(1), sequence).squeeze(1)  # (B, D)
+        attn_mean = attention_weights.mean(1)  
+
+        global_weights = attn_mean.mean(1) 
+        global_weights = torch.softmax(global_weights, dim=-1) 
+        pooled = torch.bmm(global_weights.unsqueeze(1), sequence).squeeze(1) 
         return pooled
 
 class PairwiseModalityAttention(nn.Module):
@@ -289,9 +304,7 @@ class PairwiseModalityAttention(nn.Module):
         #   4. Return attended features and attention maps for visualization
     
         B = next(iter(modality_features.values())).size(0)
-        M = self.num_modalities
 
-        # we'll collect all incoming attended vectors for each modality
         collected = {m: [] for m in self.modality_names}
         attention_maps = {}
 
@@ -303,41 +316,32 @@ class PairwiseModalityAttention(nn.Module):
                 layer_key = f"{mi}_to_{mj}"
                 attn_layer = self.attn_layers[layer_key]
 
-                q = modality_features[mi]  # (B, D_mi)
-                k = modality_features[mj]  # (B, D_mj)
+                q = modality_features[mi]  
+                k = modality_features[mj]  
                 v = modality_features[mj]
 
-                # if we have a mask, we only want to attend to mj when mj is present
                 mask_ij = None
                 if modality_mask is not None:
-                    # modality_mask: (B, M)
-                    # for this attention, we care if mj exists
-                    mask_ij = modality_mask[:, j]  # (B,)
+
+                    mask_ij = modality_mask[:, j]  
 
                 attended_vec, attn_weights = attn_layer(q, k, v, mask_ij)
-                # store attention map for visualization
-                attention_maps[layer_key] = attn_weights  # (B, H, 1, 1) in our CrossModalAttention
+                attention_maps[layer_key] = attn_weights  
 
-                # collect this "view" of mi (mi reading from mj)
                 collected[mi].append(attended_vec)
 
-        # now aggregate per modality
         attended_features = {}
-        for m in self.modality_names:
+        for m in enumerate(self.modality_names):
             if len(collected[m]) == 0:
-                # no incoming attention (shouldn't happen for M>1), just keep original
                 attended_features[m] = modality_features[m]
             else:
-                # average all attended versions for this modality
-                stacked = torch.stack(collected[m], dim=0)  # (num_sources, B, hidden_dim)
-                fused = stacked.mean(dim=0)  # (B, hidden_dim)
+                stacked = torch.stack(collected[m], dim=0)  
+                fused = stacked.mean(dim=0) 
                 attended_features[m] = fused
 
-        # if we have a mask, zero out missing modalities in the output
         if modality_mask is not None:
-            for i, m in enumerate(self.modality_names):
-                attended_features[m] = attended_features[m] * modality_mask[:, i].unsqueeze(-1)
-
+           attended_features[m] = attended_features[m] * modality_mask[:, i].unsqueeze(-1)
+           
         return attended_features, attention_maps
 
 
@@ -366,27 +370,18 @@ def visualize_attention(
         attn = attn.detach().cpu()
 
     # 2) normalize shape
-    # cases:
-    # (B, H, Q, K) -> avg over B and H
-    # (H, Q, K)     -> avg over H
-    # (Q, K)        -> use as is
     if attn.ndim == 4:
-        # (B, H, Q, K)
-        attn = attn.mean(dim=0).mean(dim=0)  # -> (Q, K)
+        attn = attn.mean(dim=0).mean(dim=0)  
     elif attn.ndim == 3:
-        # (H, Q, K)
-        attn = attn.mean(dim=0)              # -> (Q, K)
+        attn = attn.mean(dim=0)             
     elif attn.ndim == 2:
-        # already (Q, K)
         pass
     else:
         raise ValueError(f"Unexpected attention shape: {attn.shape}")
 
-    attn = attn.numpy()  # (Q, K)
+    attn = attn.numpy() 
 
     # 3) make sure labels match
-    # if Q != len(modality_names) or K != len(modality_names),
-    # we still plot, but trimming/padding could be added here
     fig, ax = plt.subplots(figsize=(4 + 0.4 * attn.shape[0],
                                     4 + 0.4 * attn.shape[1]))
     im = ax.imshow(attn, cmap="viridis")
@@ -394,7 +389,6 @@ def visualize_attention(
     ax.set_xticks(np.arange(attn.shape[1]))
     ax.set_yticks(np.arange(attn.shape[0]))
 
-    # if lengths mismatch, just use indices
     if len(modality_names) == attn.shape[1]:
         ax.set_xticklabels(modality_names, rotation=45, ha="right")
     else:
@@ -417,7 +411,6 @@ def visualize_attention(
         plt.savefig(save_path, dpi=200)
         plt.close(fig)
     else:
-        # show inline if running in a notebook/script
         plt.show()
     
 

@@ -47,15 +47,14 @@ class MCDropoutUncertainty(nn.Module):
         #   3. Compute mean and variance of predictions
         #   4. Return mean prediction and uncertainty
 
-        self.model.train()  # enable dropout
+        self.model.train()  
         logits_list = []
         for _ in range(self.num_samples):
-            logits = self.model(*args, **kwargs)  # (B, C)
+            logits = self.model(*args, **kwargs)  
             logits_list.append(logits.unsqueeze(0))
-        logits_stack = torch.cat(logits_list, dim=0)  # (S, B, C)
+        logits_stack = torch.cat(logits_list, dim=0) 
         mean_logits = logits_stack.mean(0)
-        # predictive variance as uncertainty
-        var = logits_stack.var(0).mean(dim=-1)  # (B,)
+        var = logits_stack.var(0).mean(dim=-1)  
         return mean_logits, var
         
 
@@ -308,11 +307,11 @@ class UncertaintyWeightedFusion(nn.Module):
         # build weights per modality
         weights_list = []
         for i, m in enumerate(modality_list):
-            u = modality_uncertainties[m]              # (B,)
-            w = 1.0 / (u + self.epsilon)               # higher uncertainty -> lower weight
-            w = w * modality_mask[:, i]                # zero out missing
+            u = modality_uncertainties[m]           
+            w = 1.0 / (u + self.epsilon)              
+            w = w * modality_mask[:, i]                
             weights_list.append(w.unsqueeze(1))
-        weights = torch.cat(weights_list, dim=1)        # (B, M)
+        weights = torch.cat(weights_list, dim=1)       
         weights = weights / (weights.sum(dim=1, keepdim=True) + 1e-6)
 
         fused = torch.zeros(B, num_classes, device=modality_mask.device)
@@ -426,14 +425,14 @@ class EnsembleUncertainty:
         for model in self.models:
             model.eval()
             with torch.no_grad():
-                logits = model(inputs)  # (B, C)
+                logits = model(inputs) 
                 probs = torch.softmax(logits, dim=1)
                 logits_list.append(probs.unsqueeze(0))
-        # (E, B, C)
+
         probs_stack = torch.cat(logits_list, dim=0)
-        mean_probs = probs_stack.mean(dim=0)           # (B, C)
-        var_probs = probs_stack.var(dim=0).mean(dim=1) # (B,)
-        # we return mean logits in logit-space by taking log of probs
+        mean_probs = probs_stack.mean(dim=0)          
+        var_probs = probs_stack.var(dim=0).mean(dim=1) 
+
         mean_logits = torch.log(mean_probs.clamp(min=1e-8))
         return mean_logits, var_probs
     
